@@ -1,73 +1,258 @@
-# Welcome to your Lovable project
 
-## Project info
+# Legal Contract Reviewer
 
-**URL**: https://lovable.dev/projects/4691c634-1d11-4622-a979-b56b513a4faf
+A fully responsive, mobile-first Legal Contract Reviewer web application with AI-powered document analysis and amendment suggestions.
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+### Authentication & User Management
+- Email-based login with Supabase authentication
+- User role management (Admin, Editor, Viewer)
+- Theme toggle (light/dark mode)
+- Secure logout functionality
 
-**Use Lovable**
+### Contract Analysis
+- Document upload via drag-and-drop interface
+- Support for multiple file formats (PDF, DOC, DOCX, TXT)
+- Multi-language support (English, Indonesian)
+- AI-powered contract review with streaming responses
+- Compliance assessment with detailed justifications
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/4691c634-1d11-4622-a979-b56b513a4faf) and start prompting.
+### Review Dashboard
+- Visual compliance overview with percentage breakdowns
+- Expandable/collapsible assessment cards
+- Advanced filtering by compliance status
+- Interactive amendment recommendations
 
-Changes made via Lovable will be committed automatically to this repo.
+### Document Editing
+- Side-by-side document editing interface
+- Real-time synchronization between original and amended text
+- Rich text editor with formatting options
+- Bilingual document support
+- Export to Word functionality
 
-**Use your preferred IDE**
+### Responsive Design
+- Mobile-first approach
+- Fully responsive across all screen sizes
+- Optimized touch interactions
+- Accessible design patterns
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Technology Stack
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- **Frontend**: React.js with TypeScript
+- **Styling**: TailwindCSS
+- **UI Components**: ShadCN UI
+- **Rich Text Editor**: Custom implementation with formatting tools
+- **File Upload**: React Dropzone
+- **Authentication**: Supabase Auth
+- **State Management**: React Context API
+- **Build Tool**: Vite
+- **Routing**: React Router DOM
 
-Follow these steps:
+## Local Installation
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Prerequisites
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Make sure you have the following installed on your system:
 
-# Step 3: Install the necessary dependencies.
-npm i
+- **Node.js** (version 16 or higher) - [Download here](https://nodejs.org/)
+- **npm** or **yarn** package manager
+- **Git** - [Download here](https://git-scm.com/)
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### Step 1: Clone the Repository
+
+```bash
+git clone <your-repository-url>
+cd legal-contract-reviewer
+```
+
+### Step 2: Install Dependencies
+
+Using npm:
+```bash
+npm install
+```
+
+Or using yarn:
+```bash
+yarn install
+```
+
+### Step 3: Environment Setup
+
+Create a `.env` file in the root directory and add your Supabase credentials:
+
+```env
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_SUPABASE_SERVICE_KEY=your_supabase_service_key
+```
+
+**Note**: Replace the placeholder values with your actual Supabase project credentials.
+
+### Step 4: Start the Development Server
+
+Using npm:
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Or using yarn:
+```bash
+yarn dev
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+The application will be available at `http://localhost:8080`
 
-**Use GitHub Codespaces**
+### Step 5: Build for Production
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+To create a production build:
 
-## What technologies are used for this project?
+Using npm:
+```bash
+npm run build
+```
 
-This project is built with:
+Or using yarn:
+```bash
+yarn build
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Step 6: Preview Production Build
 
-## How can I deploy this project?
+To preview the production build locally:
 
-Simply open [Lovable](https://lovable.dev/projects/4691c634-1d11-4622-a979-b56b513a4faf) and click on Share -> Publish.
+Using npm:
+```bash
+npm run preview
+```
 
-## Can I connect a custom domain to my Lovable project?
+Or using yarn:
+```bash
+yarn preview
+```
 
-Yes, you can!
+## Project Structure
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```
+src/
+├── components/          # Reusable UI components
+│   ├── ui/             # ShadCN UI components
+│   ├── LoginForm.tsx   # Authentication form
+│   ├── Sidebar.tsx     # Navigation sidebar
+│   ├── ContractUpload.tsx
+│   ├── StreamingResponse.tsx
+│   ├── ContractReviewDashboard.tsx
+│   ├── ComplianceCard.tsx
+│   ├── EditDocumentModal.tsx
+│   ├── PreviewDocumentModal.tsx
+│   ├── RichTextEditor.tsx
+│   └── MainLayout.tsx
+├── contexts/           # React context providers
+│   ├── AuthContext.tsx
+│   └── ThemeContext.tsx
+├── types/             # TypeScript type definitions
+├── pages/             # Page components
+├── hooks/             # Custom React hooks
+└── lib/               # Utility functions
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## Key Features Implementation
+
+### Authentication Flow
+1. Users login with email/password
+2. Supabase authentication validates credentials
+3. User metadata determines role (Admin/Editor/Viewer)
+4. Protected routes ensure authorized access
+
+### Contract Review Process
+1. **Upload**: Users upload contracts with language/positioning settings
+2. **Analysis**: AI processes document with streaming feedback
+3. **Dashboard**: Visual compliance overview with detailed breakdowns
+4. **Editing**: Side-by-side interface for amendments
+5. **Preview**: Rich text editor with export capabilities
+
+### Responsive Design
+- Mobile-first CSS with Tailwind
+- Flexible grid layouts
+- Touch-optimized interactions
+- Adaptive sidebar navigation
+
+## API Integrations
+
+### Planned Integrations
+- **Supabase**: Authentication and data storage
+- **Flowise**: AI document analysis
+- **Pinecone**: Regulations vector database
+- **Translation API**: Multi-language support
+
+### Current Implementation
+The current version includes mock implementations for all API calls, providing a fully functional UI that can be easily connected to real services.
+
+## Development Guidelines
+
+### Code Style
+- TypeScript for type safety
+- Functional components with hooks
+- Consistent naming conventions
+- Comprehensive error handling
+
+### Component Structure
+- Reusable, composable components
+- Clear prop interfaces
+- Proper state management
+- Accessibility considerations
+
+### Testing
+```bash
+# Run tests
+npm run test
+
+# Run tests with coverage
+npm run test:coverage
+```
+
+## Deployment
+
+The application can be deployed to any static hosting service:
+
+### Vercel
+```bash
+npm run build
+# Deploy dist folder to Vercel
+```
+
+### Netlify
+```bash
+npm run build
+# Deploy dist folder to Netlify
+```
+
+### Custom Server
+```bash
+npm run build
+# Serve dist folder with any web server
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+For support and questions:
+- Create an issue in the repository
+- Check the documentation
+- Contact the development team
+
+---
+
+**Note**: This application requires Supabase integration for full functionality. Make sure to set up your Supabase project and configure the environment variables before deployment.
