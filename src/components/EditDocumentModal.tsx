@@ -55,6 +55,7 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
   const [highlightedSentence, setHighlightedSentence] = useState<string | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [currentDocumentText, setCurrentDocumentText] = useState(documentText || mockOriginalText);
+  const [appliedAmendments, setAppliedAmendments] = useState<Record<string, boolean>>({});
   const leftPanelRef = useRef<HTMLDivElement>(null);
   const rightPanelRef = useRef<HTMLDivElement>(null);
 
@@ -67,17 +68,23 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
       
       // Check if this line contains text that matches any original clause
       const matchingCard = amendmentCards.find(card => 
-        card.originalClause && line.toLowerCase().includes(card.originalClause.toLowerCase().slice(0, 20))
+        card.originalClause && (
+          line.toLowerCase().includes(card.originalClause.toLowerCase().slice(0, 30)) ||
+          card.originalClause.toLowerCase().includes(line.toLowerCase().slice(0, 30))
+        )
       );
       
       const isHighlighted = highlightedSentence && line.includes(highlightedSentence);
+      const isAmended = matchingCard && appliedAmendments[matchingCard.id];
       
       return (
         <div
           key={index}
           className={`cursor-pointer transition-colors leading-relaxed ${
             matchingCard 
-              ? 'bg-purple-200 dark:bg-purple-900 px-1 rounded hover:bg-purple-300 dark:hover:bg-purple-800'
+              ? isAmended
+                ? 'bg-green-200 dark:bg-green-900 px-1 rounded hover:bg-green-300 dark:hover:bg-green-800'
+                : 'bg-purple-200 dark:bg-purple-900 px-1 rounded hover:bg-purple-300 dark:hover:bg-purple-800'
               : 'hover:bg-gray-100 dark:hover:bg-gray-800'
           } ${
             isHighlighted 
@@ -110,8 +117,8 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
     if (!originalClause) return null;
     const lines = currentDocumentText.split('\n');
     return lines.find(line => 
-      line.toLowerCase().includes(originalClause.toLowerCase().slice(0, 20)) ||
-      originalClause.toLowerCase().includes(line.toLowerCase().slice(0, 15))
+      line.toLowerCase().includes(originalClause.toLowerCase().slice(0, 30)) ||
+      originalClause.toLowerCase().includes(line.toLowerCase().slice(0, 30))
     );
   };
 
@@ -129,18 +136,34 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
 
   const handleApplyFix = (cardId: string) => {
     const card = amendmentCards.find(c => c.id === cardId);
-    const amendmentText = amendmentTexts[cardId];
+    const amendmentText = amendmentTexts[cardId] || card?.revisedClause;
     
     if (card?.originalClause && amendmentText) {
-      const matchingSentence = findMatchingSentence(card.originalClause);
-      if (matchingSentence) {
-        // Replace the original sentence with the amendment text
-        const updatedText = currentDocumentText.replace(matchingSentence, amendmentText);
+      // Find the line that contains the original clause
+      const lines = currentDocumentText.split('\n');
+      let updatedLines = [...lines];
+      
+      // Find and replace the matching line
+      const matchingLineIndex = lines.findIndex(line => 
+        line.toLowerCase().includes(card.originalClause!.toLowerCase().slice(0, 30)) ||
+        card.originalClause!.toLowerCase().includes(line.toLowerCase().slice(0, 30))
+      );
+      
+      if (matchingLineIndex !== -1) {
+        updatedLines[matchingLineIndex] = amendmentText;
+        const updatedText = updatedLines.join('\n');
         setCurrentDocumentText(updatedText);
         
-        // Clear selection
-        setSelectedCardId(null);
-        setHighlightedSentence(null);
+        // Mark this amendment as applied
+        setAppliedAmendments(prev => ({
+          ...prev,
+          [cardId]: true
+        }));
+        
+        // Update highlighted sentence to the new text
+        setHighlightedSentence(amendmentText);
+        
+        console.log(`Applied amendment for card ${cardId}: ${amendmentText}`);
       }
     }
   };
@@ -161,7 +184,7 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
             {/* Left Panel - Original Document */}
             <div className="flex-1 flex flex-col min-h-0">
               <h3 className="font-semibold mb-4">Original Contract</h3>
-              <ScrollArea className="flex-1 border rounded-lg">
+              <ScrollArea className="flex-1 border rounded-lg" ref={leftPanelRef}>
                 <div className="p-4 space-y-1 font-mono text-sm whitespace-pre-wrap">
                   {formatDocumentText(currentDocumentText)}
                 </div>
@@ -177,7 +200,7 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
             {/* Right Panel - Amendment Cards */}
             <div className="flex-1 flex flex-col min-h-0">
               <h3 className="font-semibold mb-4">Amendments</h3>
-              <ScrollArea className="flex-1 border rounded-lg">
+              <ScrollArea className="flex-1 border rounded-lg" ref={rightPanelRef}>
                 <div className="p-4 space-y-4">
                   {amendmentCards.map(card => (
                     <div
@@ -186,14 +209,20 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                       className={`border rounded-lg p-4 cursor-pointer transition-all ${
                         selectedCardId === card.id 
                           ? 'border-red-500 bg-red-50 dark:bg-red-950 shadow-lg'
+                          : appliedAmendments[card.id]
+                          ? 'border-green-500 bg-green-50 dark:bg-green-950'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                       onClick={() => handleCardClick(card.id)}
                     >
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <Badge className="text-xs">
-                            {card.complianceAssessment}
+                          <Badge className={`text-xs ${
+                            appliedAmendments[card.id] 
+                              ? 'bg-green-500 text-white' 
+                              : ''
+                          }`}>
+                            {appliedAmendments[card.id] ? 'Applied' : card.complianceAssessment}
                           </Badge>
                           {card.itemNo && (
                             <span className="text-xs text-muted-foreground">
@@ -236,9 +265,13 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                             size="sm"
                             onClick={() => handleApplyFix(card.id)}
                             disabled={!amendmentTexts[card.id] && !card.revisedClause}
-                            className="w-full"
+                            className={`w-full ${
+                              appliedAmendments[card.id] 
+                                ? 'bg-green-600 hover:bg-green-700' 
+                                : ''
+                            }`}
                           >
-                            Apply This Fix
+                            {appliedAmendments[card.id] ? 'Re-apply This Fix' : 'Apply This Fix'}
                           </Button>
                         </div>
                       </div>
