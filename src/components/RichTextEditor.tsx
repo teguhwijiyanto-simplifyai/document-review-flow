@@ -14,9 +14,10 @@ import {
 interface RichTextEditorProps {
   content: string;
   onChange: (content: string) => void;
+  placeholder?: string;
 }
 
-const RichTextEditor: React.FC<RichTextEditorProps> = ({ content, onChange }) => {
+const RichTextEditor: React.FC<RichTextEditorProps> = ({ content, onChange, placeholder }) => {
   const editorRef = React.useRef<HTMLDivElement>(null);
 
   const executeCommand = (command: string, value?: string) => {
@@ -138,10 +139,21 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ content, onChange }) =>
         className="p-4 min-h-[400px] max-h-[500px] overflow-y-auto focus:outline-none"
         dangerouslySetInnerHTML={{ __html: content }}
         onInput={handleContentChange}
+        data-placeholder={placeholder}
         style={{
           lineHeight: '1.6',
         }}
       />
+      
+      {/* Show placeholder when content is empty */}
+      {!content && placeholder && (
+        <div 
+          className="absolute top-[60px] left-4 text-gray-400 pointer-events-none"
+          style={{ lineHeight: '1.6' }}
+        >
+          {placeholder}
+        </div>
+      )}
     </div>
   );
 };
