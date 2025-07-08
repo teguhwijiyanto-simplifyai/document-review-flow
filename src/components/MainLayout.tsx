@@ -4,75 +4,105 @@ import Sidebar from './Sidebar';
 import ContractUpload from './ContractUpload';
 import StreamingResponse from './StreamingResponse';
 import ContractReviewDashboard from './ContractReviewDashboard';
-import { ContractUpload as ContractUploadType, ContractAnalysis } from '@/types';
-
-const mockAnalysis: ContractAnalysis = {
-  overallCompliance: 80,
-  partialCompliance: 10,
-  nonCompliance: 6,
-  missingClauses: 4,
-  complianceCards: [
-    {
-      id: '1',
-      complianceAssessment: 'Compliant',
-      category: 'Employment Terms',
-      contractualReference: 'Section 1: Employee agrees to serve as designated position',
-      applicableRegulatoryReference: 'Labor Code Section 200-205',
-      legalJustification: 'The employment terms comply with standard labor regulations and provide clear definition of roles and responsibilities.'
-    },
-    {
-      id: '2',
-      complianceAssessment: 'Partially Compliant',
-      category: 'Termination Clause',
-      contractualReference: 'Section 4: Termination with 30 days notice',
-      applicableRegulatoryReference: 'Labor Code Section 2922',
-      legalJustification: 'While termination notice is provided, the 30-day period may be insufficient for certain positions requiring longer transition periods.'
-    },
-    {
-      id: '3',
-      complianceAssessment: 'Non-Compliant',
-      category: 'Non-Compete Agreement',
-      contractualReference: 'Section 6: One year non-compete restriction',
-      applicableRegulatoryReference: 'Business and Professions Code Section 16600',
-      legalJustification: 'The one-year non-compete period exceeds reasonable limitations and may be unenforceable in certain jurisdictions.'
-    }
-  ],
-  amendmentCards: [
-    {
-      id: '4',
-      complianceAssessment: 'Partially Compliant',
-      category: 'Termination Notice',
-      contractualReference: 'Section 4: Termination procedures',
-      applicableRegulatoryReference: 'Labor Code Section 2922',
-      legalJustification: 'Termination notice period should be extended to provide adequate transition time.',
-      recommendedLegalAmendment: 'Extend notice period from 30 to 60 days',
-      originalClause: 'This Agreement may be terminated by either party with thirty (30) days written notice.',
-      revisedClause: 'This Agreement may be terminated by either party with sixty (60) days written notice, providing adequate transition time.',
-      amendmentText: 'This Agreement may be terminated by either party with sixty (60) days written notice, providing adequate transition time.'
-    },
-    {
-      id: '5',
-      complianceAssessment: 'Non-Compliant',
-      category: 'Non-Compete Restrictions',
-      contractualReference: 'Section 6: Non-compete clause',
-      applicableRegulatoryReference: 'Business and Professions Code Section 16600',
-      legalJustification: 'Non-compete restrictions must be reasonable in scope, duration, and geographic limitation.',
-      recommendedLegalAmendment: 'Reduce non-compete period and scope',
-      originalClause: 'Employee agrees that for a period of one (1) year following termination of employment, Employee will not engage in any business that competes with the Company.',
-      revisedClause: 'Employee agrees that for a period of six (6) months following termination of employment, Employee will not engage in direct competition with the Company\'s core business activities within the same geographic region.',
-      amendmentText: 'Employee agrees that for a period of six (6) months following termination of employment, Employee will not engage in direct competition with the Company\'s core business activities within the same geographic region.'
-    }
-  ]
-};
+import { ContractUpload as ContractUploadType, ContractAnalysis, ApiResponse, ComplianceCard } from '@/types';
 
 const MainLayout = () => {
   const [activeMenuItem, setActiveMenuItem] = useState('contract-review');
   const [currentView, setCurrentView] = useState<'upload' | 'streaming' | 'dashboard'>('upload');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [analysisData, setAnalysisData] = useState<ContractAnalysis | null>(null);
+
+  const parseApiResponse = (response: ApiResponse): ContractAnalysis => {
+    // Calculate compliance percentages based on the data
+    const totalCards = response.tableA.length;
+    const compliantCards = response.tableA.filter(card => card.complianceAssessment === 'Compliant').length;
+    const partiallyCompliantCards = response.tableA.filter(card => card.complianceAssessment === 'Partially Compliant').length;
+    const nonCompliantCards = response.tableA.filter(card => card.complianceAssessment === 'Non-Compliant').length;
+    const missingClausesCards = response.tableA.filter(card => card.complianceAssessment === 'Missing Clause(s)').length;
+
+    const overallCompliance = totalCards > 0 ? Math.round((compliantCards / totalCards) * 100) : 0;
+    const partialCompliance = totalCards > 0 ? Math.round((partiallyCompliantCards / totalCards) * 100) : 0;
+    const nonCompliance = totalCards > 0 ? Math.round((nonCompliantCards / totalCards) * 100) : 0;
+    const missingClauses = totalCards > 0 ? Math.round((missingClausesCards / totalCards) * 100) : 0;
+
+    // Add unique IDs to cards if they don't have them
+    const processCards = (cards: ComplianceCard[]): ComplianceCard[] => {
+      return cards.map((card, index) => ({
+        ...card,
+        id: card.id || `${index}-${Date.now()}`,
+        amendmentText: card.revisedClause || card.amendmentText || ''
+      }));
+    };
+
+    return {
+      overallCompliance,
+      partialCompliance,
+      nonCompliance,
+      missingClauses,
+      complianceCards: processCards(response.tableA || []),
+      amendmentCards: processCards(response.tableB || [])
+    };
+  };
 
   const handleUpload = async (uploadData: ContractUploadType) => {
     setIsProcessing(true);
     setCurrentView('streaming');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadData.file);
+      formData.append('language', uploadData.language);
+      formData.append('partyPositioning', uploadData.partyPositioning);
+      formData.append('riskPositioning', uploadData.riskPositioning);
+
+      const response = await fetch('https://workflow.simplifygenai.id/api/v1/prediction/fff70a49-0cfb-45f1-8c39-409d4ffa566b', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('API request failed');
+      }
+
+      const apiResponse: ApiResponse = await response.json();
+      const analysis = parseApiResponse(apiResponse);
+      setAnalysisData(analysis);
+      
+    } catch (error) {
+      console.error('Error calling API:', error);
+      // For now, fall back to mock data if API fails
+      const mockAnalysis: ContractAnalysis = {
+        overallCompliance: 80,
+        partialCompliance: 10,
+        nonCompliance: 6,
+        missingClauses: 4,
+        complianceCards: [
+          {
+            id: '1',
+            complianceAssessment: 'Compliant',
+            category: 'Employment Terms',
+            contractualReference: 'Section 1: Employee agrees to serve as designated position',
+            applicableRegulatoryReference: 'Labor Code Section 200-205',
+            legalJustification: 'The employment terms comply with standard labor regulations and provide clear definition of roles and responsibilities.'
+          }
+        ],
+        amendmentCards: [
+          {
+            id: '4',
+            complianceAssessment: 'Partially Compliant',
+            category: 'Termination Notice',
+            contractualReference: 'Section 4: Termination procedures',
+            applicableRegulatoryReference: 'Labor Code Section 2922',
+            legalJustification: 'Termination notice period should be extended to provide adequate transition time.',
+            recommendedLegalAmendment: 'Extend notice period from 30 to 60 days',
+            originalClause: 'This Agreement may be terminated by either party with thirty (30) days written notice.',
+            revisedClause: 'This Agreement may be terminated by either party with sixty (60) days written notice, providing adequate transition time.',
+            amendmentText: 'This Agreement may be terminated by either party with sixty (60) days written notice, providing adequate transition time.'
+          }
+        ]
+      };
+      setAnalysisData(mockAnalysis);
+    }
   };
 
   const handleStreamingComplete = () => {
@@ -82,6 +112,7 @@ const MainLayout = () => {
 
   const handleBackToUpload = () => {
     setCurrentView('upload');
+    setAnalysisData(null);
   };
 
   const renderContent = () => {
@@ -107,7 +138,7 @@ const MainLayout = () => {
       case 'streaming':
         return <StreamingResponse onComplete={handleStreamingComplete} />;
       case 'dashboard':
-        return <ContractReviewDashboard analysis={mockAnalysis} />;
+        return analysisData ? <ContractReviewDashboard analysis={analysisData} /> : null;
       default:
         return <ContractUpload onUpload={handleUpload} isLoading={isProcessing} />;
     }

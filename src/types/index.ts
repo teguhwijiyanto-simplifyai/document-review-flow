@@ -8,6 +8,7 @@ export interface User {
 
 export interface ComplianceCard {
   id: string;
+  itemNo?: string;
   complianceAssessment: 'Compliant' | 'Partially Compliant' | 'Non-Compliant' | 'Missing Clause(s)';
   category: string;
   contractualReference: string;
@@ -17,6 +18,7 @@ export interface ComplianceCard {
   originalClause?: string;
   revisedClause?: string;
   amendmentText?: string;
+  inputVerificationOfAmendments?: string;
 }
 
 export interface ContractAnalysis {
@@ -26,6 +28,7 @@ export interface ContractAnalysis {
   missingClauses: number;
   complianceCards: ComplianceCard[];
   amendmentCards: ComplianceCard[];
+  redundancyCards?: ComplianceCard[];
 }
 
 export interface ContractUpload {
@@ -33,4 +36,10 @@ export interface ContractUpload {
   language: 'English' | 'Indonesian';
   partyPositioning: 'Company' | 'Employee';
   riskPositioning: 'Low' | 'Medium' | 'High';
+}
+
+export interface ApiResponse {
+  tableA: ComplianceCard[];
+  tableB: ComplianceCard[];
+  tableC: ComplianceCard[];
 }

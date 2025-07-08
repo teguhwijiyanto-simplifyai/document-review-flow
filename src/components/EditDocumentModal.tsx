@@ -54,17 +54,29 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [highlightedSentence, setHighlightedSentence] = useState<string | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [documentText, setDocumentText] = useState(mockOriginalText);
   const leftPanelRef = useRef<HTMLDivElement>(null);
   const rightPanelRef = useRef<HTMLDivElement>(null);
 
-  const sentences = mockOriginalText.split(/(?<=[.!?])\s+/).filter(s => s.trim());
+  const sentences = documentText.split(/(?<=[.!?])\s+/).filter(s => s.trim());
+
+  const findMatchingSentence = (originalClause: string) => {
+    if (!originalClause) return null;
+    return sentences.find(sentence => 
+      sentence.toLowerCase().includes(originalClause.toLowerCase().slice(0, 20)) ||
+      originalClause.toLowerCase().includes(sentence.toLowerCase().slice(0, 15))
+    );
+  };
 
   const handleSentenceClick = (sentence: string, index: number) => {
     setHighlightedSentence(sentence);
     
     // Find matching card based on sentence content
     const matchingCard = amendmentCards.find(card => 
-      card.originalClause && sentence.toLowerCase().includes(card.originalClause.toLowerCase().slice(0, 20))
+      card.originalClause && (
+        sentence.toLowerCase().includes(card.originalClause.toLowerCase().slice(0, 20)) ||
+        card.originalClause.toLowerCase().includes(sentence.toLowerCase().slice(0, 15))
+      )
     );
     
     if (matchingCard) {
@@ -83,13 +95,27 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
     const card = amendmentCards.find(c => c.id === cardId);
     
     if (card?.originalClause) {
-      // Find matching sentence
-      const matchingSentence = sentences.find(sentence => 
-        sentence.toLowerCase().includes(card.originalClause!.toLowerCase().slice(0, 20))
-      );
-      
+      const matchingSentence = findMatchingSentence(card.originalClause);
       if (matchingSentence) {
         setHighlightedSentence(matchingSentence);
+      }
+    }
+  };
+
+  const handleApplyFix = (cardId: string) => {
+    const card = amendmentCards.find(c => c.id === cardId);
+    const amendmentText = amendmentTexts[cardId];
+    
+    if (card?.originalClause && amendmentText) {
+      const matchingSentence = findMatchingSentence(card.originalClause);
+      if (matchingSentence) {
+        // Replace the original sentence with the amendment text
+        const updatedText = documentText.replace(matchingSentence, amendmentText);
+        setDocumentText(updatedText);
+        
+        // Clear selection
+        setSelectedCardId(null);
+        setHighlightedSentence(null);
       }
     }
   };
@@ -115,7 +141,10 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                   {sentences.map((sentence, index) => {
                     const isHighlighted = sentence === highlightedSentence;
                     const hasAmendment = amendmentCards.some(card => 
-                      card.originalClause && sentence.toLowerCase().includes(card.originalClause.toLowerCase().slice(0, 20))
+                      card.originalClause && (
+                        sentence.toLowerCase().includes(card.originalClause.toLowerCase().slice(0, 20)) ||
+                        card.originalClause.toLowerCase().includes(sentence.toLowerCase().slice(0, 15))
+                      )
                     );
                     
                     return (
@@ -163,9 +192,16 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                       onClick={() => handleCardClick(card.id)}
                     >
                       <div className="flex items-center justify-between mb-3">
-                        <Badge className="text-xs">
-                          {card.complianceAssessment}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge className="text-xs">
+                            {card.complianceAssessment}
+                          </Badge>
+                          {card.itemNo && (
+                            <span className="text-xs text-muted-foreground">
+                              Item {card.itemNo}
+                            </span>
+                          )}
+                        </div>
                         {selectedCardId === card.id && (
                           <ArrowRight className="h-5 w-5 text-red-500 rotate-180" />
                         )}
@@ -179,6 +215,15 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                           </p>
                         </div>
                         
+                        {card.originalClause && (
+                          <div>
+                            <h4 className="font-medium text-sm mb-1">Original Clause</h4>
+                            <p className="text-xs text-muted-foreground bg-gray-50 dark:bg-gray-900 p-2 rounded">
+                              {card.originalClause}
+                            </p>
+                          </div>
+                        )}
+                        
                         <div>
                           <h4 className="font-medium text-sm mb-1">Amendment</h4>
                           <Textarea
@@ -186,8 +231,16 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                             onChange={(e) => onAmendmentChange(card.id, e.target.value)}
                             placeholder="Enter amendment text..."
                             rows={3}
-                            className="text-xs resize-none"
+                            className="text-xs resize-none mb-2"
                           />
+                          <Button
+                            size="sm"
+                            onClick={() => handleApplyFix(card.id)}
+                            disabled={!amendmentTexts[card.id] && !card.revisedClause}
+                            className="w-full"
+                          >
+                            Apply This Fix
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -215,6 +268,7 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
         onClose={() => setShowPreviewModal(false)}
         amendmentCards={amendmentCards}
         amendmentTexts={amendmentTexts}
+        documentText={documentText}
       />
     </>
   );
