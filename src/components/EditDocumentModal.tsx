@@ -15,10 +15,10 @@ interface EditDocumentModalProps {
   amendmentCards: ComplianceCardType[];
   amendmentTexts: Record<string, string>;
   onAmendmentChange: (id: string, text: string) => void;
+  documentText?: string;
 }
 
-const mockOriginalText = `
-EMPLOYMENT AGREEMENT
+const mockOriginalText = `EMPLOYMENT AGREEMENT
 
 This Employment Agreement ("Agreement") is entered into on [DATE] between [COMPANY NAME], a [STATE] corporation ("Company"), and [EMPLOYEE NAME] ("Employee").
 
@@ -41,43 +41,59 @@ Employee acknowledges that during employment, Employee may have access to confid
 Employee agrees that for a period of one (1) year following termination of employment, Employee will not engage in any business that competes with the Company.
 
 7. GOVERNING LAW
-This Agreement shall be governed by the laws of the State of [STATE].
-`;
+This Agreement shall be governed by the laws of the State of [STATE].`;
 
 const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
   isOpen,
   onClose,
   amendmentCards,
   amendmentTexts,
-  onAmendmentChange
+  onAmendmentChange,
+  documentText
 }) => {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [highlightedSentence, setHighlightedSentence] = useState<string | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [documentText, setDocumentText] = useState(mockOriginalText);
+  const [currentDocumentText, setCurrentDocumentText] = useState(documentText || mockOriginalText);
   const leftPanelRef = useRef<HTMLDivElement>(null);
   const rightPanelRef = useRef<HTMLDivElement>(null);
 
-  const sentences = documentText.split(/(?<=[.!?])\s+/).filter(s => s.trim());
-
-  const findMatchingSentence = (originalClause: string) => {
-    if (!originalClause) return null;
-    return sentences.find(sentence => 
-      sentence.toLowerCase().includes(originalClause.toLowerCase().slice(0, 20)) ||
-      originalClause.toLowerCase().includes(sentence.toLowerCase().slice(0, 15))
-    );
+  // Parse document text while preserving line breaks and structure
+  const formatDocumentText = (text: string) => {
+    return text.split('\n').map((line, index) => {
+      if (line.trim() === '') {
+        return <br key={index} />;
+      }
+      
+      // Check if this line contains text that matches any original clause
+      const matchingCard = amendmentCards.find(card => 
+        card.originalClause && line.toLowerCase().includes(card.originalClause.toLowerCase().slice(0, 20))
+      );
+      
+      const isHighlighted = highlightedSentence && line.includes(highlightedSentence);
+      
+      return (
+        <div
+          key={index}
+          className={`cursor-pointer transition-colors leading-relaxed ${
+            matchingCard 
+              ? 'bg-purple-200 dark:bg-purple-900 px-1 rounded hover:bg-purple-300 dark:hover:bg-purple-800'
+              : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+          } ${
+            isHighlighted 
+              ? 'bg-yellow-300 dark:bg-yellow-700 font-semibold'
+              : ''
+          }`}
+          onClick={() => handleLineClick(line, matchingCard)}
+        >
+          {line}
+        </div>
+      );
+    });
   };
 
-  const handleSentenceClick = (sentence: string, index: number) => {
-    setHighlightedSentence(sentence);
-    
-    // Find matching card based on sentence content
-    const matchingCard = amendmentCards.find(card => 
-      card.originalClause && (
-        sentence.toLowerCase().includes(card.originalClause.toLowerCase().slice(0, 20)) ||
-        card.originalClause.toLowerCase().includes(sentence.toLowerCase().slice(0, 15))
-      )
-    );
+  const handleLineClick = (line: string, matchingCard?: ComplianceCardType) => {
+    setHighlightedSentence(line);
     
     if (matchingCard) {
       setSelectedCardId(matchingCard.id);
@@ -88,6 +104,15 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
         cardElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
+  };
+
+  const findMatchingSentence = (originalClause: string) => {
+    if (!originalClause) return null;
+    const lines = currentDocumentText.split('\n');
+    return lines.find(line => 
+      line.toLowerCase().includes(originalClause.toLowerCase().slice(0, 20)) ||
+      originalClause.toLowerCase().includes(line.toLowerCase().slice(0, 15))
+    );
   };
 
   const handleCardClick = (cardId: string) => {
@@ -110,8 +135,8 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
       const matchingSentence = findMatchingSentence(card.originalClause);
       if (matchingSentence) {
         // Replace the original sentence with the amendment text
-        const updatedText = documentText.replace(matchingSentence, amendmentText);
-        setDocumentText(updatedText);
+        const updatedText = currentDocumentText.replace(matchingSentence, amendmentText);
+        setCurrentDocumentText(updatedText);
         
         // Clear selection
         setSelectedCardId(null);
@@ -127,48 +152,22 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-7xl h-[80vh]">
+        <DialogContent className="max-w-7xl h-[90vh]">
           <DialogHeader>
             <DialogTitle className="text-xl">Edit Document</DialogTitle>
           </DialogHeader>
           
-          <div className="flex gap-6 h-full">
+          <div className="flex gap-6 h-full min-h-0">
             {/* Left Panel - Original Document */}
-            <div className="flex-1">
+            <div className="flex-1 flex flex-col min-h-0">
               <h3 className="font-semibold mb-4">Original Contract</h3>
-              <ScrollArea className="h-[500px] border rounded-lg p-4" ref={leftPanelRef}>
-                <div className="space-y-2">
-                  {sentences.map((sentence, index) => {
-                    const isHighlighted = sentence === highlightedSentence;
-                    const hasAmendment = amendmentCards.some(card => 
-                      card.originalClause && (
-                        sentence.toLowerCase().includes(card.originalClause.toLowerCase().slice(0, 20)) ||
-                        card.originalClause.toLowerCase().includes(sentence.toLowerCase().slice(0, 15))
-                      )
-                    );
-                    
-                    return (
-                      <span
-                        key={index}
-                        className={`cursor-pointer transition-colors ${
-                          hasAmendment 
-                            ? 'bg-purple-200 dark:bg-purple-900 px-1 rounded'
-                            : ''
-                        } ${
-                          isHighlighted 
-                            ? 'bg-yellow-300 dark:bg-yellow-700 font-semibold'
-                            : ''
-                        }`}
-                        onClick={() => handleSentenceClick(sentence, index)}
-                      >
-                        {sentence}{' '}
-                      </span>
-                    );
-                  })}
+              <ScrollArea className="flex-1 border rounded-lg">
+                <div className="p-4 space-y-1 font-mono text-sm whitespace-pre-wrap">
+                  {formatDocumentText(currentDocumentText)}
                 </div>
                 
                 {highlightedSentence && selectedCardId && (
-                  <div className="flex justify-center mt-4">
+                  <div className="flex justify-center p-4">
                     <ArrowRight className="h-8 w-8 text-red-500 animate-pulse" />
                   </div>
                 )}
@@ -176,10 +175,10 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
             </div>
 
             {/* Right Panel - Amendment Cards */}
-            <div className="flex-1">
+            <div className="flex-1 flex flex-col min-h-0">
               <h3 className="font-semibold mb-4">Amendments</h3>
-              <ScrollArea className="h-[500px] border rounded-lg p-4" ref={rightPanelRef}>
-                <div className="space-y-4">
+              <ScrollArea className="flex-1 border rounded-lg">
+                <div className="p-4 space-y-4">
                   {amendmentCards.map(card => (
                     <div
                       key={card.id}
@@ -268,7 +267,7 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
         onClose={() => setShowPreviewModal(false)}
         amendmentCards={amendmentCards}
         amendmentTexts={amendmentTexts}
-        documentText={documentText}
+        documentText={currentDocumentText}
       />
     </>
   );
